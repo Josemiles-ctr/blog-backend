@@ -11,8 +11,8 @@ dependencies = [
     "alembic>=1.20.0",
     "fastapi[standard]>=0.141.1",
     "pydantic>=2.13.5",
-    "pyjwt>=2.15.0",
     "sqlalchemy>=2.0.54",
+    "sqlmodel>=0.0.47",
     "uvicorn>=0.53.0",
 ]
 
