@@ -1,18 +1,43 @@
-from .database_tables import Base, Blog, Topic, Reference, blog_topics, blog_references
-from .blog_dtos import BlogCreate, BlogRead, BlogUpdate, TopicCreate, TopicRead, ReferenceCreate, ReferenceRead
+from .blog_dtos import (
+    BlogCreate,
+    BlogRead,
+    BlogSummaryRead,
+    BlogUpdate,
+    CommentRead,
+    ReferenceCreate,
+    ReferenceRead,
+    TopicCreate,
+    TopicRead,
+    UserRead,
+)
+from .database_tables import (
+    Base,
+    Blog,
+    Comment,
+    Reference,
+    Topic,
+    User,
+    blog_references,
+    blog_topics,
+)
 
 __all__ = [
     "Base",
     "Blog",
-    "Topic",
-    "Reference",
-    "blog_topics",
-    "blog_references",
     "BlogCreate",
     "BlogRead",
+    "BlogSummaryRead",
     "BlogUpdate",
-    "TopicCreate",
-    "TopicRead",
+    "Comment",
+    "CommentRead",
+    "Reference",
     "ReferenceCreate",
     "ReferenceRead",
+    "Topic",
+    "TopicCreate",
+    "TopicRead",
+    "User",
+    "UserRead",
+    "blog_references",
+    "blog_topics",
 ]

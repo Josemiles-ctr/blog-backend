@@ -10,7 +10,10 @@ blogs_router = APIRouter(prefix="/blogs", tags=["blogs"])
 
 @blogs_router.post("", response_model=BlogRead, status_code=status.HTTP_201_CREATED)
 def create_blog(data: BlogCreate, db: Session = Depends(get_db)) -> BlogRead:
-    blog = blog_repository.create_blog(db, data)
+    try:
+        blog = blog_repository.create_blog(db, data)
+    except blog_repository.UnknownAuthorError as exc:
+        raise HTTPException(status_code=404, detail=f"Author {exc.author_id} not found")
     return BlogRead.model_validate(blog)
 
 
@@ -33,7 +36,10 @@ def get_blog(blog_id: int, db: Session = Depends(get_db)) -> BlogRead:
 def update_blog(
     blog_id: int, data: BlogUpdate, db: Session = Depends(get_db)
 ) -> BlogRead:
-    blog = blog_repository.update_blog(db, blog_id, data)
+    try:
+        blog = blog_repository.update_blog(db, blog_id, data)
+    except blog_repository.UnknownAuthorError as exc:
+        raise HTTPException(status_code=404, detail=f"Author {exc.author_id} not found")
     if blog is None:
         raise HTTPException(status_code=404, detail="Blog not found")
     return BlogRead.model_validate(blog)

@@ -1,5 +1,5 @@
 from sqlalchemy import delete, select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, raiseload, selectinload
 
 from src.domain.entities import (
     Blog,
@@ -7,15 +7,28 @@ from src.domain.entities import (
     BlogUpdate,
     Reference,
     Topic,
+    User,
+)
+
+# The related blog's own columns are needed, but its topics, references,
+# comments and author are not part of this blog's payload. Without raiseload,
+# SQLAlchemy eagerly loads those too and every read costs ~11 queries instead
+# of 6. Note: raiseload("*") is a no-op here, so each relationship on Blog is
+# listed - keep this in sync if Blog gains another relationship.
+_RELATED_BLOG = selectinload(Blog.related_blog).options(
+    raiseload(Blog.topics),
+    raiseload(Blog.references),
+    raiseload(Blog.comments),
+    raiseload(Blog.author),
+    raiseload(Blog.related_blog),
 )
 
 
 def _load(db: Session, blog_id: int) -> Blog | None:
-    stmt = (
-        select(Blog)
-        .options(selectinload(Blog.topics), selectinload(Blog.references), selectinload(Blog.author))
-        .where(Blog.id == blog_id)
-    )
+    # author, comments, topics and references load automatically via
+    # lazy="selectin". related_blog is self-referential and must be requested
+    # explicitly, so every read path funnels through this one statement.
+    stmt = select(Blog).options(_RELATED_BLOG).where(Blog.id == blog_id)
     return db.scalars(stmt).one_or_none()
 
 
@@ -62,7 +75,26 @@ def _prune_orphans(db: Session) -> None:
     db.execute(delete(Reference).where(~Reference.blogs.any()))
 
 
+class UnknownAuthorError(LookupError):
+    """Raised when a BlogCreate/BlogUpdate names a user id that does not exist."""
+
+    def __init__(self, author_id: int) -> None:
+        self.author_id = author_id
+        super().__init__(f"No user with id {author_id}")
+
+
+def _require_user(db: Session, author_id: int) -> User:
+    # Checked up front so a bad id is a clear 404 instead of an opaque
+    # ForeignKeyViolation raised at COMMIT time.
+    user = db.get(User, author_id)
+    if user is None:
+        raise UnknownAuthorError(author_id)
+    return user
+
+
 def _apply(db: Session, blog: Blog, data: BlogCreate | BlogUpdate) -> None:
+    if data.author is not None:
+        blog.author = _require_user(db, data.author)
     if data.topics is not None:
         blog.topics = _resolve_topics(db, [t.name for t in data.topics])
     if data.references is not None:
@@ -86,7 +118,7 @@ def get_blog(db: Session, blog_id: int) -> Blog | None:
 def list_blogs(db: Session, skip: int = 0, limit: int = 100) -> list[Blog]:
     stmt = (
         select(Blog)
-        .options(selectinload(Blog.topics), selectinload(Blog.references))
+        .options(_RELATED_BLOG)
         .order_by(Blog.id)
         .offset(skip)
         .limit(limit)

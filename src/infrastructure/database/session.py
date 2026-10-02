@@ -1,5 +1,6 @@
 import os
 from collections.abc import Generator
+from pathlib import Path
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
@@ -8,7 +9,12 @@ from supabase import Client, create_client
 
 from src.domain.entities import Base
 
-load_dotenv()
+# Anchored to the repository root instead of the working directory: bare
+# load_dotenv() searches relative to how the process was launched, so running
+# from anywhere but the project root silently lost DATABASE_URL.
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+load_dotenv(PROJECT_ROOT / ".env")
 
 
 def _require_env(key: str) -> str:
@@ -22,7 +28,7 @@ def _require_env(key: str) -> str:
 
 def _normalize_url(url: str) -> str:
     # Supabase hands out a plain "postgresql://" URI, but SQLAlchemy maps that to
-    # psycopg2. This project uses psycopg3, so pin the driver when none is given.
+    # psycopg2. This project uses psycopg3, so we pin the driver when none is given.
     if url.startswith("postgresql://"):
         return "postgresql+psycopg://" + url.removeprefix("postgresql://")
     return url

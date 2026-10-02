@@ -18,6 +18,35 @@ MAX_REFERENCE_LINK = 2048
 MAX_RELATIONS = 50
 
 
+class UserRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    username: str
+    email: str
+    title: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class CommentRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    content: str
+    user: UserRead | None
+
+
+class BlogSummaryRead(BaseModel):
+    """Enough of a blog to render a link to it, without recursing into its own
+    comments/topics/related blog."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+
+
 def _not_blank(value: str | None) -> str | None:
     if value is None:
         return None
@@ -91,6 +120,7 @@ class BlogCreate(BaseModel):
 
     title: str = Field(min_length=1, max_length=MAX_TITLE)
     content: str = Field(min_length=1)
+    author: int = Field(gt=0, description="id of the User who owns the post")
     topics: list[TopicCreate] = Field(default_factory=list, max_length=MAX_RELATIONS)
     references: list[ReferenceCreate] = Field(default_factory=list, max_length=MAX_RELATIONS)
 
@@ -114,6 +144,7 @@ class BlogUpdate(BaseModel):
 
     title: str | None = Field(default=None, min_length=1, max_length=MAX_TITLE)
     content: str | None = Field(default=None, min_length=1)
+    author: int | None = Field(default=None, gt=0)
     topics: list[TopicCreate] | None = Field(
         default=None, max_length=MAX_RELATIONS
     )
@@ -124,7 +155,7 @@ class BlogUpdate(BaseModel):
     _strip_title = field_validator("title")(_not_blank)
 
     @model_validator(mode="after")
-    def _at_least_one_field(self) -> "BlogUpdate":
+    def _at_least_one_field(self) -> BlogUpdate:
         if not self.model_fields_set:
             raise ValueError("at least one field must be provided")
         return self
@@ -148,6 +179,9 @@ class BlogRead(BaseModel):
     id: int
     title: str
     content: str
+    author: UserRead
+    comments: list[CommentRead] = Field(default_factory=list)
+    related_blog: BlogSummaryRead | None = None
     topics: list[TopicRead] = Field(default_factory=list)
     references: list[ReferenceRead] = Field(default_factory=list)
     created_at: datetime

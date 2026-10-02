@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en" class="dark scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="FastAPI blog backend on Supabase Postgres, with versioned Alembic migrations and a fully eager-loaded read path.">
+  <title>blog-backend — FastAPI on Supabase</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+            mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', 'monospace'],
+          },
+        },
+      },
+    }
+  </script>
+</head>
+
+<body class="min-h-screen bg-zinc-950 font-sans text-zinc-100 antialiased selection:bg-emerald-400/30 selection:text-emerald-200">
+
+  <!-- ambient glow -->
+  <div aria-hidden="true" class="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+    <div class="absolute -top-40 left-1/2 h-96 w-[42rem] -translate-x-1/2 rounded-full bg-emerald-500/10 blur-3xl"></div>
+    <div class="absolute top-1/3 -right-32 h-80 w-80 rounded-full bg-sky-500/5 blur-3xl"></div>
+    <div class="absolute inset-0 bg-[linear-gradient(to_right,rgba(63,63,70,.25)_1px,transparent_1px),linear-gradient(to_bottom,rgba(63,63,70,.25)_1px,transparent_1px)] bg-[size:56px_56px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_75%)]"></div>
+  </div>
+
+  <!-- header -->
+  <header class="sticky top-0 z-50 border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur">
+    <div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+      <a href="/" class="flex items-center gap-2.5 font-semibold tracking-tight">
+        <span class="grid h-8 w-8 place-items-center rounded-lg bg-emerald-500/15 text-emerald-400 ring-1 ring-inset ring-emerald-500/25">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+          </svg>
+        </span>
+        <span>blog<span class="text-emerald-400">-</span>backend</span>
+      </a>
+
+      <nav class="hidden items-center gap-7 text-sm text-zinc-400 md:flex">
+        <a href="#features" class="transition-colors hover:text-zinc-100">Features</a>
+        <a href="#api" class="transition-colors hover:text-zinc-100">API</a>
+        <a href="#schema" class="transition-colors hover:text-zinc-100">Schema</a>
+      </nav>
+
+      <a href="/docs"
+         class="rounded-lg border border-zinc-700 bg-zinc-900/60 px-3.5 py-2 text-sm font-medium text-zinc-200 transition hover:border-emerald-500/40 hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400">
+        API docs
+      </a>
+    </div>
+  </header>
+
+  <main>
+    <!-- hero -->
+    <section class="mx-auto max-w-6xl px-6 pt-20 pb-24 sm:pt-28">
+      <div class="inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/60 px-3 py-1 text-xs text-zinc-400">
+        <span class="relative flex h-1.5 w-1.5">
+          <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60"></span>
+          <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+        </span>
+        live on Supabase Postgres
+      </div>
+
+      <h1 class="mt-6 max-w-3xl text-4xl font-bold tracking-tight text-balance sm:text-6xl">
+        A blog backend where the
+        <span class="bg-gradient-to-r from-emerald-300 via-emerald-400 to-teal-300 bg-clip-text text-transparent">schema is versioned</span>
+        and every read is eager.
+      </h1>
+
+      <p class="mt-6 max-w-2xl text-lg leading-relaxed text-zinc-400 text-pretty">
+        FastAPI, SQLAlchemy 2 and Alembic against a pooled Supabase Postgres connection.
+        Seven tables, three migrations deep, and zero surprise queries at serialisation time.
+      </p>
+
+      <div class="mt-9 flex flex-wrap items-center gap-3">
+        <a href="/docs"
+           class="rounded-lg bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400">
+          Explore the API
+        </a>
+        <a href="#api"
+           class="rounded-lg border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-zinc-200 transition hover:border-zinc-600 hover:bg-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400">
+          Endpoints
+        </a>
+      </div>
+
+      <!-- stack -->
+      <dl class="mt-14 flex flex-wrap items-center gap-x-7 gap-y-3 text-sm">
+        <div class="flex items-center gap-2"><dt class="sr-only">Framework</dt><dd class="text-zinc-500">FastAPI</dd></div>
+        <div class="flex items-center gap-2"><dt class="sr-only">ORM</dt><dd class="text-zinc-500">SQLAlchemy 2</dd></div>
+        <div class="flex items-center gap-2"><dt class="sr-only">Database</dt><dd class="text-zinc-500">PostgreSQL 17</dd></div>
+        <div class="flex items-center gap-2"><dt class="sr-only">Migrations</dt><dd class="text-zinc-500">Alembic</dd></div>
+        <div class="flex items-center gap-2"><dt class="sr-only">Runtime</dt><dd class="text-zinc-500">Python 3.14</dd></div>
+      </dl>
+    </section>
+
+    <!-- features -->
+    <section id="features" class="border-t border-zinc-800/80 bg-zinc-900/20">
+      <div class="mx-auto max-w-6xl px-6 py-24">
+        <h2 class="text-2xl font-semibold tracking-tight sm:text-3xl">Built to fail loudly</h2>
+        <p class="mt-3 max-w-2xl text-zinc-400">
+          The defaults here are the ones that hide problems: connections are verified, the ORM
+          refuses lazy loads, and schema drift has somewhere to be caught.
+        </p>
+
+        <div class="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <article class="group rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 transition hover:border-emerald-500/30 hover:bg-zinc-900">
+            <div class="grid h-10 w-10 place-items-center rounded-lg bg-emerald-500/10 text-emerald-400 ring-1 ring-inset ring-emerald-500/20">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3 3v18h18"></path><path d="m7 14 3-3 3 3 5-5"></path>
+              </svg>
+            </div>
+            <h3 class="mt-4 font-semibold">Versioned migrations</h3>
+            <p class="mt-2 text-sm leading-relaxed text-zinc-400">
+              A real baseline plus ordered, reversible upgrades. <code class="rounded bg-zinc-800 px-1 py-0.5 text-xs text-zinc-300">alembic check</code>
+              fails the moment a model and the database disagree.
+            </p>
+          </article>
+
+          <article class="group rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 transition hover:border-emerald-500/30 hover:bg-zinc-900">
+            <div class="grid h-10 w-10 place-items-center rounded-lg bg-emerald-500/10 text-emerald-400 ring-1 ring-inset ring-emerald-500/20">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="3"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path>
+              </svg>
+            </div>
+            <h3 class="mt-4 font-semibold">Eager by default</h3>
+            <p class="mt-2 text-sm leading-relaxed text-zinc-400">
+              Author, comments, topics and references load with the blog. Reverse sides are
+              <code class="rounded bg-zinc-800 px-1 py-0.5 text-xs text-zinc-300">lazy="raise"</code>,
+              so an N+1 can never creep back in unnoticed.
+            </p>
+          </article>
+
+          <article class="group rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 transition hover:border-emerald-500/30 hover:bg-zinc-900">
+            <div class="grid h-10 w-10 place-items-center rounded-lg bg-emerald-500/10 text-emerald-400 ring-1 ring-inset ring-emerald-500/20">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="11" width="18" height="10" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+            </div>
+            <h3 class="mt-4 font-semibold">One connection source</h3>
+            <p class="mt-2 text-sm leading-relaxed text-zinc-400">
+              The app and Alembic both read the same <code class="rounded bg-zinc-800 px-1 py-0.5 text-xs text-zinc-300">DATABASE_URL</code>,
+              so migrations can never run against a different database than the app.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- api -->
+    <section id="api" class="mx-auto max-w-6xl px-6 py-24">
+      <h2 class="text-2xl font-semibold tracking-tight sm:text-3xl">Endpoints</h2>
+      <p class="mt-3 max-w-2xl text-zinc-400">
+        Interactive documentation lives at <a href="/docs" class="text-emerald-400 underline decoration-emerald-400/30 underline-offset-4 hover:decoration-emerald-400">/docs</a>.
+      </p>
+
+      <div class="mt-10 overflow-hidden rounded-xl border border-zinc-800">
+        <ul class="divide-y divide-zinc-800/80 bg-zinc-900/40">
+          <li class="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
+            <span class="w-16 shrink-0 rounded-md bg-emerald-500/15 px-2 py-1 text-center font-mono text-xs font-semibold text-emerald-400 ring-1 ring-inset ring-emerald-500/25">POST</span>
+            <code class="font-mono text-sm text-zinc-200">/blogs</code>
+            <span class="text-sm text-zinc-500">Create a post</span>
+          </li>
+          <li class="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
+            <span class="w-16 shrink-0 rounded-md bg-sky-500/15 px-2 py-1 text-center font-mono text-xs font-semibold text-sky-400 ring-1 ring-inset ring-sky-500/25">GET</span>
+            <code class="font-mono text-sm text-zinc-200">/blogs</code>
+            <span class="text-sm text-zinc-500">List posts</span>
+          </li>
+          <li class="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
+            <span class="w-16 shrink-0 rounded-md bg-sky-500/15 px-2 py-1 text-center font-mono text-xs font-semibold text-sky-400 ring-1 ring-inset ring-sky-500/25">GET</span>
+            <code class="font-mono text-sm text-zinc-200">/blogs/{'{ blog_id }'}</code>
+            <span class="text-sm text-zinc-500">Fetch one post with its full graph</span>
+          </li>
+          <li class="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
+            <span class="w-16 shrink-0 rounded-md bg-amber-500/15 px-2 py-1 text-center font-mono text-xs font-semibold text-amber-400 ring-1 ring-inset ring-amber-500/25">PATCH</span>
+            <code class="font-mono text-sm text-zinc-200">/blogs/{'{ blog_id }'}</code>
+            <span class="text-sm text-zinc-500">Partial update</span>
+          </li>
+          <li class="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
+            <span class="w-16 shrink-0 rounded-md bg-rose-500/15 px-2 py-1 text-center font-mono text-xs font-semibold text-rose-400 ring-1 ring-inset ring-rose-500/25">DELETE</span>
+            <code class="font-mono text-sm text-zinc-200">/blogs/{'{ blog_id }'}</code>
+            <span class="text-sm text-zinc-500">Delete a post</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- schema -->
+    <section id="schema" class="border-t border-zinc-800/80 bg-zinc-900/20">
+      <div class="mx-auto max-w-6xl px-6 py-24">
+        <h2 class="text-2xl font-semibold tracking-tight sm:text-3xl">Schema</h2>
+        <p class="mt-3 max-w-2xl text-zinc-400">
+          Seven tables across three migrations, with join tables carrying their own
+          <code class="rounded bg-zinc-800 px-1 py-0.5 text-xs text-zinc-300">ON DELETE CASCADE</code> and indexes on every foreign key.
+        </p>
+
+        <div class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+            <p class="font-mono text-sm text-emerald-400">blogs</p>
+            <p class="mt-2 text-xs leading-relaxed text-zinc-500">title, content, author, views, related_blog_id</p>
+          </div>
+          <div class="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+            <p class="font-mono text-sm text-emerald-400">users</p>
+            <p class="mt-2 text-xs leading-relaxed text-zinc-500">username, email, title</p>
+          </div>
+          <div class="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+            <p class="font-mono text-sm text-emerald-400">comments</p>
+            <p class="mt-2 text-xs leading-relaxed text-zinc-500">blog_id, user_id, content</p>
+          </div>
+          <div class="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+            <p class="font-mono text-sm text-emerald-400">topics</p>
+            <p class="mt-2 text-xs leading-relaxed text-zinc-500">name, description</p>
+          </div>
+          <div class="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+            <p class="font-mono text-sm text-emerald-400">refs</p>
+            <p class="mt-2 text-xs leading-relaxed text-zinc-500">title, link</p>
+          </div>
+          <div class="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+            <p class="font-mono text-sm text-zinc-400">blog_topics</p>
+            <p class="mt-2 text-xs leading-relaxed text-zinc-500">join table</p>
+          </div>
+          <div class="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+            <p class="font-mono text-sm text-zinc-400">blog_references</p>
+            <p class="mt-2 text-xs leading-relaxed text-zinc-500">join table</p>
+          </div>
+          <div class="rounded-xl border border-dashed border-zinc-800 bg-zinc-900/20 p-5">
+            <p class="font-mono text-sm text-zinc-600">alembic_version</p>
+            <p class="mt-2 text-xs leading-relaxed text-zinc-600">migration state</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-zinc-800/80">
+    <div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-8 text-sm text-zinc-500 sm:flex-row">
+      <p>blog-backend — FastAPI on Supabase Postgres.</p>
+      <div class="flex items-center gap-5">
+        <a href="/docs" class="transition-colors hover:text-zinc-300">OpenAPI</a>
+        <a href="/api" class="transition-colors hover:text-zinc-300">Endpoints</a>
+        <span class="font-mono text-xs text-zinc-600">PostgreSQL 17</span>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
