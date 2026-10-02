@@ -12,9 +12,7 @@ from pydantic import (
 )
 
 MAX_TITLE = 255
-MAX_CONTENT = 100_000
 MAX_TOPIC_NAME = 100
-MAX_TOPIC_DESCRIPTION = 500
 MAX_REFERENCE_TITLE = 255
 MAX_REFERENCE_LINK = 2048
 MAX_RELATIONS = 50
@@ -32,7 +30,7 @@ class TopicCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str = Field(min_length=1, max_length=MAX_TOPIC_NAME)
-    description: str | None = Field(default=None, max_length=MAX_TOPIC_DESCRIPTION)
+    description: str | None = Field(default=None)
 
     _strip_name = field_validator("name")(_not_blank)
     _strip_description = field_validator("description")(_not_blank)
@@ -92,11 +90,9 @@ class BlogCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     title: str = Field(min_length=1, max_length=MAX_TITLE)
-    content: str = Field(min_length=1, max_length=MAX_CONTENT)
+    content: str = Field(min_length=1)
     topics: list[TopicCreate] = Field(default_factory=list, max_length=MAX_RELATIONS)
-    references: list[ReferenceCreate] = Field(
-        default_factory=list, max_length=MAX_RELATIONS
-    )
+    references: list[ReferenceCreate] = Field(default_factory=list, max_length=MAX_RELATIONS)
 
     _strip_title = field_validator("title")(_not_blank)
 
@@ -117,7 +113,7 @@ class BlogUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     title: str | None = Field(default=None, min_length=1, max_length=MAX_TITLE)
-    content: str | None = Field(default=None, min_length=1, max_length=MAX_CONTENT)
+    content: str | None = Field(default=None, min_length=1)
     topics: list[TopicCreate] | None = Field(
         default=None, max_length=MAX_RELATIONS
     )

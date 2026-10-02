@@ -13,7 +13,7 @@ from src.domain.entities import (
 def _load(db: Session, blog_id: int) -> Blog | None:
     stmt = (
         select(Blog)
-        .options(selectinload(Blog.topics), selectinload(Blog.references))
+        .options(selectinload(Blog.topics), selectinload(Blog.references), selectinload(Blog.author))
         .where(Blog.id == blog_id)
     )
     return db.scalars(stmt).one_or_none()

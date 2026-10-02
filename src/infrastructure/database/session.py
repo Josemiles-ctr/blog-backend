@@ -1,37 +1,67 @@
 import os
 from collections.abc import Generator
 
-from sqlalchemy import create_engine, event
-from sqlalchemy.engine import Engine
+from dotenv import load_dotenv
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
+from supabase import Client, create_client
 
 from src.domain.entities import Base
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./blog.db")
-IS_SQLITE = DATABASE_URL.startswith("sqlite")
+load_dotenv()
+
+
+def _require_env(key: str) -> str:
+    value = os.getenv(key, "").strip()
+    if not value:
+        raise RuntimeError(
+            f"{key} is not set. Copy .env.example to .env and fill in the value."
+        )
+    return value
+
+
+def _normalize_url(url: str) -> str:
+    # Supabase hands out a plain "postgresql://" URI, but SQLAlchemy maps that to
+    # psycopg2. This project uses psycopg3, so pin the driver when none is given.
+    if url.startswith("postgresql://"):
+        return "postgresql+psycopg://" + url.removeprefix("postgresql://")
+    return url
+
+
+_raw_url = _require_env("DATABASE_URL")
+
+DATABASE_URL = _normalize_url(_raw_url)
 
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False} if IS_SQLITE else {},
+    pool_pre_ping=True,
+    pool_size=5,
+    max_overflow=10,
+    pool_recycle=1800,
 )
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
+_supabase_client: Client | None = None
 
-if IS_SQLITE:
 
-    @event.listens_for(Engine, "connect")
-    def _enable_sqlite_foreign_keys(dbapi_connection, connection_record) -> None:
-        cursor = dbapi_connection.cursor()
-        cursor.execute("PRAGMA foreign_keys=ON")
-        cursor.close()
+def get_supabase() -> Client:
+    # Built on first use rather than at import: the API keys are not needed for
+    # database access, and a missing key should not stop the app from booting.
+    global _supabase_client
+    if _supabase_client is None:
+        _supabase_client = create_client(
+            _require_env("SUPABASE_URL"),
+            _require_env("SUPABASE_KEY"),
+        )
+    return _supabase_client
 
 
 def init_db() -> None:
     Base.metadata.create_all(bind=engine)
 
 
-def get_db() -> Generator[Session, None, None]:
+def get_db() -> Generator[Session]:
     db = SessionLocal()
     try:
         yield db

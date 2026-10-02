@@ -1,7 +1,7 @@
 [project]
 name = "blog-backend"
 version = "0.1.0"
-description = "Add your description here"
+description = "System Builder | Software Engineer"
 readme = "README.md"
 authors = [
     { name = "Josemiles-ctr", email = "josephotai37@gmail.com" }

@@ -17,6 +17,28 @@ def utcnow() -> datetime:
 
 class Base(DeclarativeBase):
     pass
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow, server_default=func.now()
+    )
+
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    blog_id: Mapped[int] = mapped_column(ForeignKey("blogs.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True)
+    content: Mapped[str] = mapped_column(String, nullable=False)
 
 blog_topics = Table(
     "blog_topics",
@@ -72,10 +94,7 @@ class Topic(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow, server_default=func.now()
     )
-
-    def __repr__(self) -> str:
-        return f"<Topic id={self.id} name={self.name!r}>"
-
+    
 class Reference(Base):
     __tablename__ = "refs"
 
@@ -95,17 +114,19 @@ class Reference(Base):
         DateTime(timezone=True), default=utcnow, onupdate=utcnow, server_default=func.now()
     )
 
-    def __repr__(self) -> str:
-        return f"<Reference id={self.id} title={self.title!r}>"
-
-
 class Blog(Base):
     __tablename__ = "blogs"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     content: Mapped[str] = mapped_column(String, nullable=False)
-
+    author: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    views: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    
+    Comments: Mapped[list["Comment"]] = relationship(
+        "Comment", backref="blog", cascade="all, delete-orphan", passive_deletes=True
+    )
+    
     topics: Mapped[list["Topic"]] = relationship(
         secondary=blog_topics,
         back_populates="blogs",
@@ -121,6 +142,3 @@ class Blog(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow, server_default=func.now()
     )
-
-    def __repr__(self) -> str:
-        return f"<Blog id={self.id} title={self.title!r}>"
